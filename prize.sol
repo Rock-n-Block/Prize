@@ -103,8 +103,8 @@ contract HRS is Ownable {
 
     string public name = "Prize";
     string public symbol = "PRIZE";
-    uint8 constant public decimals = 8;
-    uint256 constant internal magnitude = 1e8;
+    uint8 constant public decimals = 9;
+    uint256 constant internal magnitude = 1e9;
 
     uint8 constant internal transferFee = 2;
     uint8 constant internal buyInFee = 2;
