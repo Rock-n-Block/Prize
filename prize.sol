@@ -50,6 +50,10 @@ contract Ownable {
     require(msg.sender == owner);
     _;
   }
+  
+  function changeOwner(address new_owner) public onlyOwner {
+    owner = new_owner;
+  }
 }
 
 contract HRS is Ownable {
