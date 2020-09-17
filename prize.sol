@@ -124,7 +124,7 @@ contract HRS is Ownable {
 
     uint256 private tokenSupply = 0;
     uint256 private contractValue = 0;
-    uint256 private tokenPrice = 100000000;
+    uint256 private tokenPrice = 10 ** decimals;
 
     TOKEN erc20;
 
