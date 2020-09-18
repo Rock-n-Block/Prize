@@ -56,7 +56,7 @@ contract Ownable {
   }
 }
 
-contract HRS is Ownable {
+contract PRZ is Ownable {
     using SafeMath for uint256;
 
     uint ACTIVATION_TIME = 1582416000;
