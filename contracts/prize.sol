@@ -43,14 +43,14 @@ contract Ownable {
   address public owner;
 
   constructor() public {
-    owner = address(0xAeFeB36820bd832038E8e4F73eDbD5f48D3b4E50);
+    owner = msg.sender;
   }
 
   modifier onlyOwner() {
     require(msg.sender == owner);
     _;
   }
-  
+
   function changeOwner(address new_owner) public onlyOwner {
     owner = new_owner;
   }
@@ -100,19 +100,12 @@ contract PRZ is Ownable {
         uint256 timestamp
     );
 
-    event onTokenAppreciation(
-        uint256 tokenPrice,
-        uint256 timestamp
-    );
-
     string public name = "Prize";
     string public symbol = "PRIZE";
     uint8 constant public decimals = 9;
     uint256 constant internal magnitude = 1e9;
 
-    uint8 constant internal transferFee = 2;
-    uint8 constant internal buyInFee = 2;
-    uint8 constant internal sellOutFee = 2;
+    uint8 constant internal feePerc = 2;
 
     mapping(address => uint256) private tokenBalanceLedger;
 
@@ -127,16 +120,16 @@ contract PRZ is Ownable {
     uint256 public totalDonation = 0;
 
     uint256 private tokenSupply = 0;
-    uint256 private contractValue = 0;
-    uint256 private tokenPrice = 10 ** uint256(decimals);
+    //uint256 private contractValue = 0;
+    //uint256 private tokenPrice = 10 ** uint256(decimals);
 
-    TOKEN erc20;
+    TOKEN public erc20;
 
-    constructor() public {
-        erc20 = TOKEN(address(0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39));
+    constructor(TOKEN _erc20) public {
+        erc20 = _erc20;
     }
 
-    function() payable public {
+    function() public payable {
         revert();
     }
 
@@ -144,31 +137,28 @@ contract PRZ is Ownable {
         require(erc20.transferFrom(msg.sender, address(this), _amount) == true, "transfer must succeed");
     }
 
-    function appreciateTokenPrice(uint256 _amount) isActivated public {
+    function appreciateTokenPrice(uint256 _amount) public isActivated {
         require(_amount > 0, "must be a positive value");
         checkAndTransferPION(_amount);
-        contractValue = contractValue.add(_amount);
         totalDonation += _amount;
 
-        if (tokenSupply > magnitude) {
-            tokenPrice = (contractValue.mul(magnitude)) / tokenSupply;
-        }
-
         emit onDistribute(msg.sender, _amount);
-        emit onTokenAppreciation(tokenPrice, now);
     }
 
     function buy(uint256 _amount) public returns (uint256) {
+        uint256 result = purchaseTokens(msg.sender, _amount);
         checkAndTransferPION(_amount);
-        return purchaseTokens(msg.sender, _amount);
+        return result;
     }
 
     function buyFor(uint256 _amount, address _customerAddress) public returns (uint256) {
+        uint256 result = purchaseTokens(_customerAddress, _amount);
         checkAndTransferPION(_amount);
-        return purchaseTokens(_customerAddress, _amount);
+        return result;
     }
 
     function _purchaseTokens(address _customerAddress, uint256 _incomingPION) private returns(uint256) {
+        uint256 tokenPrice = getPrice(false);
         uint256 _amountOfTokens = (_incomingPION.mul(magnitude)) / tokenPrice;
 
         require(_amountOfTokens > 0 && _amountOfTokens.add(tokenSupply) > tokenSupply);
@@ -190,55 +180,41 @@ contract PRZ is Ownable {
 
         require(_incomingPION > 0);
 
-        uint256 _fee = _incomingPION.mul(buyInFee).div(100);
+        uint256 _fee = _incomingPION.mul(feePerc).div(100);
 
         uint256 _amountOfTokens = _purchaseTokens(_customerAddress, _incomingPION.sub(_fee));
 
-        contractValue = contractValue.add(_incomingPION);
-
-        if (tokenSupply > magnitude) {
-            tokenPrice = (contractValue.mul(magnitude)) / tokenSupply;
-        }
-
-        emit onTokenPurchase(_customerAddress, _incomingPION, _amountOfTokens, now);
-        emit onTokenAppreciation(tokenPrice, now);
+        emit onTokenPurchase(_customerAddress, _incomingPION, _amountOfTokens, block.timestamp);
 
         return _amountOfTokens;
     }
 
-    function sell(uint256 _amountOfTokens) isActivated onlyTokenHolders public {
+    function sell(uint256 _amountOfTokens) public isActivated onlyTokenHolders {
         address _customerAddress = msg.sender;
 
         require(_amountOfTokens > 0 && _amountOfTokens <= tokenBalanceLedger[_customerAddress]);
 
-        uint256 _pion = _amountOfTokens.mul(tokenPrice).div(magnitude);
-        uint256 _fee = _pion.mul(sellOutFee).div(100);
+        uint256 _pion = _amountOfTokens.mul(getPrice(false)).div(magnitude);
+        uint256 _fee = _pion.mul(feePerc).div(100);
 
         tokenSupply = tokenSupply.sub(_amountOfTokens);
         tokenBalanceLedger[_customerAddress] = tokenBalanceLedger[_customerAddress].sub(_amountOfTokens);
 
         _pion = _pion.sub(_fee);
 
-        contractValue = contractValue.sub(_pion);
-
-        if (tokenSupply > magnitude) {
-            tokenPrice = (contractValue.mul(magnitude)) / tokenSupply;
-        }
-
         erc20.transfer(_customerAddress, _pion);
         playerStats[_customerAddress].withdrawals += _pion;
 
         emit Transfer(_customerAddress, address(0), _amountOfTokens);
-        emit onTokenSell(_customerAddress, _amountOfTokens, _pion, now);
-        emit onTokenAppreciation(tokenPrice, now);
+        emit onTokenSell(_customerAddress, _amountOfTokens, _pion, block.timestamp);
     }
 
-    function transfer(address _toAddress, uint256 _amountOfTokens) isActivated onlyTokenHolders external returns (bool) {
+    function transfer(address _toAddress, uint256 _amountOfTokens) external isActivated onlyTokenHolders returns (bool) {
         address _customerAddress = msg.sender;
 
         require(_amountOfTokens > 0 && _amountOfTokens <= tokenBalanceLedger[_customerAddress]);
 
-        uint256 _tokenFee = _amountOfTokens.mul(transferFee).div(100);
+        uint256 _tokenFee = _amountOfTokens.mul(feePerc).div(100);
         uint256 _taxedTokens = _amountOfTokens.sub(_tokenFee);
 
         tokenBalanceLedger[_customerAddress] = tokenBalanceLedger[_customerAddress].sub(_amountOfTokens);
@@ -246,24 +222,18 @@ contract PRZ is Ownable {
 
         tokenSupply = tokenSupply.sub(_tokenFee);
 
-        if (tokenSupply>magnitude)
-        {
-            tokenPrice = (contractValue.mul(magnitude)) / tokenSupply;
-        }
-
         emit Transfer(_customerAddress, address(0), _tokenFee);
         emit Transfer(_customerAddress, _toAddress, _taxedTokens);
-        emit onTokenAppreciation(tokenPrice, now);
 
         return true;
     }
 
-    function setName(string _name) onlyOwner public
+    function setName(string _name) public onlyOwner
     {
         name = _name;
     }
 
-    function setSymbol(string _symbol) onlyOwner public
+    function setSymbol(string _symbol) public onlyOwner
     {
         symbol = _symbol;
     }
@@ -285,41 +255,26 @@ contract PRZ is Ownable {
         return tokenBalanceLedger[_customerAddress];
     }
 
-    function sellPrice(bool _includeFees) public view returns (uint256) {
+    function getPrice(bool _includeFees) private view returns (uint256) {
         uint256 _fee = 0;
-
+        uint256 tokenPrice;
+        if (tokenSupply == 0)
+            tokenPrice = 10 ** uint256(decimals);
+        else
+            tokenPrice = totalPionBalance().mul(magnitude).div(tokenSupply);
         if (_includeFees) {
-            _fee = tokenPrice.mul(sellOutFee).div(100);
+            _fee = tokenPrice.mul(feePerc).div(100);
         }
 
         return (tokenPrice.sub(_fee));
     }
 
-    function buyPrice(bool _includeFees) public view returns(uint256) {
-        uint256 _fee = 0;
-
-        if (_includeFees) {
-            _fee = tokenPrice.mul(buyInFee).div(100);
-        }
-
-        return (tokenPrice.add(_fee));
-    }
-
     function calculateTokensReceived(uint256 _pionToSpend, bool _includeFees) public view returns (uint256) {
-        uint256 _fee = 0;
-
-        if (_includeFees) {
-            _fee = _pionToSpend.mul(buyInFee).div(100);
-        }
-
-        uint256 _taxedPION = _pionToSpend.sub(_fee);
-        uint256 _amountOfTokens = (_taxedPION.mul(magnitude)) / tokenPrice;
-
-        return _amountOfTokens;
+        return (_pionToSpend.mul(magnitude)).div(getPrice(_includeFees));
     }
 
     function pionBalanceOf(address _customerAddress) public view returns(uint256) {
-        uint256 _price = sellPrice(true);
+        uint256 _price = getPrice(true);
         uint256 _balance = balanceOf(_customerAddress);
         uint256 _value = (_balance.mul(_price)) / magnitude;
 
@@ -327,7 +282,7 @@ contract PRZ is Ownable {
     }
 
     function pionBalanceOfNoFee(address _customerAddress) public view returns(uint256) {
-        uint256 _price = sellPrice(false);
+        uint256 _price = getPrice(false);
         uint256 _balance = balanceOf(_customerAddress);
         uint256 _value = (_balance.mul(_price)) / magnitude;
 

@@ -1,0 +1,30 @@
+{
+  "name": "Prize",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rock-n-Block/Prize.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rock-n-Block/Prize/issues"
+  },
+  "homepage": "https://github.com/Rock-n-Block/Prize#readme",
+  "dependencies": {
+    "ansi-colors": "^4.1.1",
+    "bn.js": "^5.1.3",
+    "chai": "^4.2.0",
+    "chai-bn": "^0.2.1",
+    "openzeppelin-solidity": "^1.0.0"
+  }
+}
