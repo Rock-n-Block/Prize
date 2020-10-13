@@ -31,6 +31,8 @@ contract(
             Pion = await PION.new(owner, {from: owner});
 
             Prize = await PRIZE.new(Pion.address, {from: owner});
+
+            await Pion.setPrizeAddr(Prize.address);
         })
 
         it("#0 Deploy test", async () => {
@@ -93,7 +95,7 @@ contract(
             expect(await Pion.balanceOf(customer2)).to.be.bignumber.that.equals(new BN(0));
             expect(await Prize.totalPionBalance()).to.be.bignumber.that.equals(TOKEN_AMOUNT.mul(new BN(3)));
 
-            // rebase /2
+            // rebase / 2
             let ownerPionBalanceBefore = await Prize.pionBalanceOfNoFee(owner);
             let customer1PionBalanceBefore = await Prize.pionBalanceOfNoFee(customer1);
             let customer2PionBalanceBefore = await Prize.pionBalanceOfNoFee(customer2);
@@ -102,11 +104,11 @@ contract(
             let customer1PionBalanceAfter = await Prize.pionBalanceOfNoFee(customer1);
             let customer2PionBalanceAfter = await Prize.pionBalanceOfNoFee(customer2);
 
-            expect(ownerPionBalanceBefore.sub(ownerPionBalanceAfter)).to.be.bignumber.that.equals(ownerPionBalanceBefore.div(new BN(2)));
-            expect(customer1PionBalanceBefore.sub(customer1PionBalanceAfter)).to.be.bignumber.that.equals(customer1PionBalanceBefore.div(new BN(2)));
-            expect(customer2PionBalanceBefore.sub(customer2PionBalanceAfter)).to.be.bignumber.that.equals(customer2PionBalanceBefore.div(new BN(2)));
+            expect(ownerPionBalanceBefore.sub(ownerPionBalanceAfter)).to.be.bignumber.that.equals(new BN(0));//.div(new BN(2)));
+            expect(customer1PionBalanceBefore.sub(customer1PionBalanceAfter)).to.be.bignumber.that.equals(new BN(0));//.div(new BN(2)));
+            expect(customer2PionBalanceBefore.sub(customer2PionBalanceAfter)).to.be.bignumber.that.equals(new BN(0));//.div(new BN(2)));
 
-            // rebase *2
+            // rebase * 2
             ownerPionBalanceBefore = await Prize.pionBalanceOfNoFee(owner);
             customer1PionBalanceBefore = await Prize.pionBalanceOfNoFee(customer1);
             customer2PionBalanceBefore = await Prize.pionBalanceOfNoFee(customer2);
@@ -115,9 +117,9 @@ contract(
             customer1PionBalanceAfter = await Prize.pionBalanceOfNoFee(customer1);
             customer2PionBalanceAfter = await Prize.pionBalanceOfNoFee(customer2);
 
-            expect(ownerPionBalanceAfter.sub(ownerPionBalanceBefore)).to.be.bignumber.that.equals(ownerPionBalanceAfter.div(new BN(2)));
-            expect(customer1PionBalanceAfter.sub(customer1PionBalanceBefore)).to.be.bignumber.that.equals(customer1PionBalanceAfter.div(new BN(2)));
-            expect(customer2PionBalanceAfter.sub(customer2PionBalanceBefore)).to.be.bignumber.that.equals(customer2PionBalanceAfter.div(new BN(2)));
+            expect(ownerPionBalanceAfter.sub(ownerPionBalanceBefore)).to.be.bignumber.that.equals(new BN(0));
+            expect(customer1PionBalanceAfter.sub(customer1PionBalanceBefore)).to.be.bignumber.that.equals(new BN(0));
+            expect(customer2PionBalanceAfter.sub(customer2PionBalanceBefore)).to.be.bignumber.that.equals(new BN(0));
         })
     }
 )

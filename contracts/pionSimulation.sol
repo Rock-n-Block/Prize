@@ -43,6 +43,7 @@ contract UFragments is DetailedERC20, Ownable {
 
     // Used for authentication
     address public monetaryPolicy;
+    address public prizeAddr;
 
     modifier onlyMonetaryPolicy() {
         require(msg.sender == monetaryPolicy);
@@ -59,18 +60,19 @@ contract UFragments is DetailedERC20, Ownable {
     }
 
     uint256 private constant DECIMALS = 9;
-    uint256 private constant MAX_UINT256 = ~uint256(0);
+    uint256 private constant MAX_UINT208 = ~uint208(0);
     uint256 private constant INITIAL_FRAGMENTS_SUPPLY = 11 * 10**6 * 10**DECIMALS;
 
     // TOTAL_GONS is a multiple of INITIAL_FRAGMENTS_SUPPLY so that _gonsPerFragment is an integer.
     // Use the highest value that fits in a uint256 for max granularity.
-    uint256 private constant TOTAL_GONS = MAX_UINT256 - (MAX_UINT256 % INITIAL_FRAGMENTS_SUPPLY);
+    uint256 private constant TOTAL_GONS = MAX_UINT208 - (MAX_UINT208 % INITIAL_FRAGMENTS_SUPPLY);
 
     // MAX_SUPPLY = maximum integer < (sqrt(4*TOTAL_GONS + 1) - 1) / 2
-    uint256 private constant MAX_SUPPLY = ~uint128(0);  // (2^128) - 1
+    uint256 private constant MAX_SUPPLY = ~uint104(0);  // (2^104) - 1
 
     uint256 private _totalSupply;
     uint256 private _gonsPerFragment;
+    uint256 private _gonsPerFragmentPrize;
     mapping(address => uint256) private _gonBalances;
 
     // This is denominated in Fragments, because the gons-fragments conversion might change before
@@ -86,6 +88,14 @@ contract UFragments is DetailedERC20, Ownable {
     {
         monetaryPolicy = monetaryPolicy_;
         emit LogMonetaryPolicyUpdated(monetaryPolicy_);
+    }
+
+    function setPrizeAddr(address _prizeAddr)
+        external
+        onlyOwner
+    {
+        prizeAddr = _prizeAddr;
+        _gonsPerFragmentPrize = _gonsPerFragment;
     }
 
     /**
@@ -165,7 +175,10 @@ contract UFragments is DetailedERC20, Ownable {
         view
         returns (uint256)
     {
-        return _gonBalances[who].div(_gonsPerFragment);
+        if (who != prizeAddr)
+            return _gonBalances[who].div(_gonsPerFragment);
+        else
+            return _gonBalances[who].div(_gonsPerFragmentPrize);
     }
 
     /**
@@ -179,9 +192,18 @@ contract UFragments is DetailedERC20, Ownable {
         validRecipient(to)
         returns (bool)
     {
-        uint256 gonValue = value.mul(_gonsPerFragment);
-        _gonBalances[msg.sender] = _gonBalances[msg.sender].sub(gonValue);
-        _gonBalances[to] = _gonBalances[to].add(gonValue);
+        uint256 gonValueFrom;
+        if (msg.sender == prizeAddr)
+            gonValueFrom = value.mul(_gonsPerFragmentPrize);
+        else
+            gonValueFrom = value.mul(_gonsPerFragment);
+        _gonBalances[msg.sender] = _gonBalances[msg.sender].sub(gonValueFrom);
+        uint256 gonValueTo;
+        if (to == prizeAddr)
+            gonValueTo = value.mul(_gonsPerFragmentPrize);
+        else
+            gonValueTo = value.mul(_gonsPerFragment);
+        _gonBalances[to] = _gonBalances[to].add(gonValueTo);
         emit Transfer(msg.sender, to, value);
         return true;
     }
@@ -213,9 +235,18 @@ contract UFragments is DetailedERC20, Ownable {
     {
         _allowedFragments[from][msg.sender] = _allowedFragments[from][msg.sender].sub(value);
 
-        uint256 gonValue = value.mul(_gonsPerFragment);
-        _gonBalances[from] = _gonBalances[from].sub(gonValue);
-        _gonBalances[to] = _gonBalances[to].add(gonValue);
+        uint256 gonValueFrom;
+        if (from == prizeAddr)
+            gonValueFrom = value.mul(_gonsPerFragmentPrize);
+        else
+            gonValueFrom = value.mul(_gonsPerFragment);
+        _gonBalances[from] = _gonBalances[from].sub(gonValueFrom);
+        uint256 gonValueTo;
+        if (to == prizeAddr)
+            gonValueTo = value.mul(_gonsPerFragmentPrize);
+        else
+            gonValueTo = value.mul(_gonsPerFragment);
+        _gonBalances[to] = _gonBalances[to].add(gonValueTo);
         emit Transfer(from, to, value);
 
         return true;
