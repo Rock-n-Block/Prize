@@ -113,17 +113,32 @@ contract UFragments is DetailedERC20, Ownable {
             return _totalSupply;
         }
 
-        if (supplyDelta < 0) {
-            _totalSupply = _totalSupply.sub(uint256(supplyDelta.abs()));
+        int256 rValueSupplyDelta = supplyDelta;
+        if (prizeAddr != address(0))
+        {
+            bool supplyDeltaSign = (supplyDelta < 0);
+            uint256 supplyDeltaAbs = uint256(supplyDelta.abs());
+            supplyDeltaAbs = supplyDeltaAbs.sub(supplyDeltaAbs.mul(balanceOf(prizeAddr)).div(_totalSupply));
+            rValueSupplyDelta = int256(supplyDeltaAbs).mul(supplyDeltaSign == true ? int256(-1) : int256(1));
+        }
+
+        if (rValueSupplyDelta < 0) {
+            _totalSupply = _totalSupply.sub(uint256(rValueSupplyDelta.abs()));
         } else {
-            _totalSupply = _totalSupply.add(uint256(supplyDelta));
+            _totalSupply = _totalSupply.add(uint256(rValueSupplyDelta));
         }
 
         if (_totalSupply > MAX_SUPPLY) {
             _totalSupply = MAX_SUPPLY;
         }
 
-        _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
+        if (prizeAddr == address(0))
+            _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
+        else
+        {
+            require(_totalSupply > balanceOf(prizeAddr));
+            _gonsPerFragment = TOTAL_GONS.sub(_gonBalances[prizeAddr]).div(_totalSupply.sub(balanceOf(prizeAddr)));
+        }
 
         // From this point forward, _gonsPerFragment is taken as the source of truth.
         // We recalculate a new _totalSupply to be in agreement with the _gonsPerFragment
